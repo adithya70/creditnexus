@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XRP Credit System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #2a5885;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        input, select, button, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #2a5885;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            padding: 10px;
+            border: none;
+        }
+        button:hover {
+            background-color: #1e3f6f;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9e9e9;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #2a5885;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .user-card {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: white;
+        }
+        .credit-score {
+            font-weight: bold;
+            color: #2a5885;
+        }
+        .loan-card {
+            border-left: 4px solid #2a5885;
+            padding: 8px;
+            margin: 8px 0;
+            background-color: #f9f9f9;
+        }
+        .loan-repaid {
+            border-left-color: #28a745;
+        }
+        .loan-overdue {
+            border-left-color: #dc3545;
+        }
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            border-radius: 4px 4px 0 0;
+        }
+        .tab button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 10px 16px;
+            transition: 0.3s;
+            color: black;
+            margin: 0;
+            width: auto;
+        }
+        .tab button:hover {
+            background-color: #ddd;
+        }
+        .tab button.active {
+            background-color: #2a5885;
+            color: white;
+        }
+        .tabcontent {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>XRP Credit System Test</h1>
+        
+        <div class="tab">
+            <button class="tablinks active" onclick="openTab(event, 'bankTab')">Bank</button>
+            <button class="tablinks" onclick="openTab(event, 'usersTab')">Users</button>
+            <button class="tablinks" onclick="openTab(event, 'loansTab')">Loans</button>
+        </div>
+        
+        <div id="bankTab" class="tabcontent" style="display: block;">
+            <h2>Bank Controls</h2>
+            <button id="initBank">Initialize Bank Account</button>
+            <div id="bankInfo" style="display:none; margin-top: 20px;">
+                <p><strong>Bank Address:</strong> <span id="bankAddress"></span></p>
+                <p><strong>Bank Secret:</strong> <span id="bankSecret"></span></p>
+                <p><strong>Bank Balance:</strong> <span id="bankBalance"></span> RLUSD</p>
+                <button id="refreshBank">Refresh Balance</button>
+            </div>
+        </div>
+        
+        <div id="usersTab" class="tabcontent">
+            <h2>User Management</h2>
+            <button id="createUser">Create New User</button>
+            <div id="userList" style="margin-top: 20px;"></div>
+        </div>
+        
+        <div id="loansTab" class="tabcontent">
+            <h2>Loan Management</h2>
+            <div id="loanControls" style="display:none;">
+                <label for="selectedUser">Select User:</label>
+                <select id="selectedUser"></select>
+                
+                <label for="loanAmount">Loan Amount (RLUSD):</label>
+                <input type="number" id="loanAmount" min="1" max="1000" value="10">
+                
+                <label for="loanTerm">Loan Term (minutes):</label>
+                <input type="number" id="loanTerm" min="1" max="1440" value="5">
+                
+                <label for="coBorrower">Co-borrower (Optional):</label>
+                <select id="coBorrower">
+                    <option value="">None</option>
+                </select>
+                
+                <button id="issueLoan">Issue Loan</button>
+                <button id="checkRepayments">Check for Repayments</button>
+                
+                <h3 style="margin-top: 30px;">Manual Repayment</h3>
+                <label for="repaymentUser">User:</label>
+                <select id="repaymentUser"></select>
+                
+                <label for="repaymentLoan">Loan to Repay:</label>
+                <select id="repaymentLoan"></select>
+                
+                <label for="repaymentAmount">Amount (RLUSD):</label>
+                <input type="number" id="repaymentAmount" min="0.000001" step="0.000001">
+                
+                <button id="submitRepayment">Submit Repayment</button>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing...</p>
+        </div>
+        
+        <div id="output"></div>
+    </div>
+
+    <script src="https://unpkg.com/xrpl@2.7.0/build/xrpl-latest-min.js"></script>
+    <script>
+        // Global variables
+        let bankWallet = null;
+        let users = [];
+        let loans = [];
+        let client = null;
+        const RLUSD_ISSUER = "rDdaDwNFMfPjHyoKaWxxjwSUiMRScorG6J";
+        const RLUSD_ISSUER_SECRET = "sEdVkfFkpuN64NSspufXRMfBbDdAxDu"; // Testnet issuer secret
+        const RLUSD_HEX = Array.from("RLUSD")
+            .map(char => char.charCodeAt(0).toString(16).padStart(2, '0'))
+            .join('')
+            .padEnd(40, '0')
+            .toUpperCase();
+        
+        // DOM elements
+        const output = document.getElementById('output');
+        const loading = document.getElementById('loading');
+        
+        // Tab functionality
+        function openTab(evt, tabName) {
+            const tabcontent = document.getElementsByClassName("tabcontent");
+            for (let i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            
+            const tablinks = document.getElementsByClassName("tablinks");
+            for (let i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+        
+        // Initialize bank account
+        document.getElementById('initBank').addEventListener('click', async function() {
+            loading.style.display = 'block';
+            output.textContent = 'Connecting to XRPL testnet...';
+            
+            try {
+                // Create client with longer timeout
+                client = new xrpl.Client('wss://s.altnet.rippletest.net:51233', {
+                    connectionTimeout: 30000 // 30 seconds timeout
+                });
+
+                // Try to connect with retries
+                let connected = false;
+                let retries = 3;
+                
+                while (!connected && retries > 0) {
+                    try {
+                        await client.connect();
+                        connected = true;
+                    } catch (error) {
+                        retries--;
+                        if (retries === 0) throw error;
+                        output.textContent += `\nConnection attempt failed, retrying... (${retries} attempts left)`;
+                        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+                    }
+                }
+                
+                output.textContent = 'Connected to XRPL testnet. Creating bank account...';
+                
+                // Create and fund bank account
+                const bankResponse = await client.fundWallet();
+                bankWallet = bankResponse.wallet;
+                
+                output.textContent = 'Bank account created. Setting up RLUSD trustline...';
+                
+                // Set up RLUSD trustline for bank
+                const trustSet = {
+                    TransactionType: "TrustSet",
+                    Account: bankWallet.classicAddress,
+                    LimitAmount: {
+                        currency: RLUSD_HEX,
+                        issuer: RLUSD_ISSUER,
+                        value: "10000000" // 10 million RLUSD limit
+                    }
+                };
+                
+                const preparedTrust = await client.autofill(trustSet);
+                const signedTrust = bankWallet.sign(preparedTrust);
+                await client.submitAndWait(signedTrust.tx_blob);
+                
+                output.textContent = 'Trustline set up. Minting initial RLUSD...';
+                
+                // Mint RLUSD to bank account
+                const issuerWallet = xrpl.Wallet.fromSeed(RLUSD_ISSUER_SECRET);
+                const mintPayment = {
+                    TransactionType: "Payment",
+                    Account: issuerWallet.classicAddress,
+                    Destination: bankWallet.classicAddress,
+                    Amount: {
+                        currency: RLUSD_HEX,
+                        issuer: RLUSD_ISSUER,
+                        value: "1000000" // 1 million RLUSD initial balance
+                    }
+                };
+                
+                const preparedMint = await client.autofill(mintPayment);
+                const signedMint = issuerWallet.sign(preparedMint);
+                await client.submitAndWait(signedMint.tx_blob);
+                
+                // Display bank info
+                document.getElementById('bankAddress').textContent = bankWallet.classicAddress;
+                document.getElementById('bankSecret').textContent = bankWallet.seed;
+                document.getElementById('bankBalance').textContent = await getBalance(bankWallet.classicAddress);
+                document.getElementById('bankInfo').style.display = 'block';
+                document.getElementById('loanControls').style.display = 'block';
+                
+                output.textContent = `✅ Bank account initialized successfully!\n` +
+                    `Address: ${bankWallet.classicAddress}\n` +
+                    `Secret: ${bankWallet.seed}\n` +
+                    `RLUSD Trustline set up\n` +
+                    `1,000,000 RLUSD minted to bank account\n\n` +
+                    `Note: This is a testnet account. Do not use this secret on mainnet.`;
+                
+                loading.style.display = 'none';
+            } catch (error) {
+                loading.style.display = 'none';
+                output.textContent = `❌ Error initializing bank: ${error.message}\n` +
+                    `Please check your internet connection and try again.`;
+                console.error(error);
+            }
+        });
+        
+        // Refresh bank balance
+        document.getElementById('refreshBank').addEventListener('click', async function() {
+            if (!bankWallet) return;
+            
+            loading.style.display = 'block';
+            output.textContent = 'Refreshing bank balance...';
+            
+            try {
+                document.getElementById('bankBalance').textContent = await getBalance(bankWallet.classicAddress);
+                output.textContent = '✅ Bank balance refreshed';
+                loading.style.display = 'none';
+            } catch (error) {
+                output.textContent = `❌ Error refreshing balance: ${error.message}`;
+                loading.style.display = 'none';
+            }
+        });
+        
+        // Create new user
+        document.getElementById('createUser').addEventListener('click', async function() {
+            if (!client) {
+                output.textContent = "❌ Please initialize the bank first";
+                return;
+            }
+            
+            loading.style.display = 'block';
+            output.textContent = '';
+            
+            try {
+                // Create and fund user account
+                const userResponse = await client.fundWallet();
+                const userWallet = userResponse.wallet;
+                
+                // Set up RLUSD trustline for user
+                const trustSet = {
+                    TransactionType: "TrustSet",
+                    Account: userWallet.classicAddress,
+                    LimitAmount: {
+                        currency: RLUSD_HEX,
+                        issuer: RLUSD_ISSUER,
+                        value: "100000"
+                    }
+                };
+                
+                const preparedTrust = await client.autofill(trustSet);
+                const signedTrust = userWallet.sign(preparedTrust);
+                await client.submitAndWait(signedTrust.tx_blob);
+                
+                // Mint RLUSD to user account
+                const issuerWallet = xrpl.Wallet.fromSeed(RLUSD_ISSUER_SECRET);
+                const mintPayment = {
+                    TransactionType: "Payment",
+                    Account: issuerWallet.classicAddress,
+                    Destination: userWallet.classicAddress,
+                    Amount: {
+                        currency: RLUSD_HEX,
+                        issuer: RLUSD_ISSUER,
+                        value: "10000"
+                    }
+                };
+                
+                const preparedMint = await client.autofill(mintPayment);
+                const signedMint = issuerWallet.sign(preparedMint);
+                await client.submitAndWait(signedMint.tx_blob);
+                
+                // Create user object
+                const newUser = {
+                    id: users.length + 1,
+                    wallet: userWallet,
+                    creditScore: 500,
+                    loans: [],
+                    lastRepaymentTime: null,
+                    totalBorrowed: 0,
+                    totalRepaid: 0
+                };
+                
+                users.push(newUser);
+                updateUserList();
+                updateUserSelects();
+                
+                output.textContent = `✅ Created new user #${newUser.id}\n` +
+                    `Address: ${userWallet.classicAddress}\n` +
+                    `Secret: ${userWallet.seed}\n` +
+                    `RLUSD Trustline set up\n` +
+                    `10,000 RLUSD minted to user account\n` +
+                    `Initial Credit Score: ${newUser.creditScore}\n\n` +
+                    `Note: This is a testnet account. Do not use this secret on mainnet.`;
+                
+                loading.style.display = 'none';
+            } catch (error) {
+                loading.style.display = 'none';
+                output.textContent = `❌ Error creating user: ${error.message}`;
+                console.error(error);
+            }
+        });
+        
+        // Issue loan
+        document.getElementById('issueLoan').addEventListener('click', async function() {
+            const userId = parseInt(document.getElementById('selectedUser').value);
+            const coBorrowerId = document.getElementById('coBorrower').value ? 
+                parseInt(document.getElementById('coBorrower').value) : null;
+            const amount = parseFloat(document.getElementById('loanAmount').value);
+            const termMinutes = parseInt(document.getElementById('loanTerm').value);
+            
+            if (!userId || !amount || !termMinutes) {
+                output.textContent = "❌ Please select a user and enter valid loan details";
+                return;
+            }
+            
+            loading.style.display = 'block';
+            output.textContent = '';
+            
+            try {
+                const user = users.find(u => u.id === userId);
+                const coBorrower = coBorrowerId ? users.find(u => u.id === coBorrowerId) : null;
+                
+                if (!user) {
+                    throw new Error("User not found");
+                }
+                
+                if (coBorrowerId && !coBorrower) {
+                    throw new Error("Co-borrower not found");
+                }
+                
+                // Check credit scores
+                if (user.creditScore < 300) {
+                    throw new Error("User credit score too low for a loan");
+                }
+                
+                if (coBorrower && coBorrower.creditScore < 300) {
+                    throw new Error("Co-borrower credit score too low for a loan");
+                }
+
+                // Verify trustlines
+                const trustlineResponse = await client.request({
+                    command: "account_lines",
+                    account: user.wallet.classicAddress,
+                    ledger_index: "validated",
+                    peer: RLUSD_ISSUER
+                });
+
+                let trustlineExists = false;
+                if (trustlineResponse.result.lines) {
+                    trustlineExists = trustlineResponse.result.lines.some(line => 
+                        line.currency === RLUSD_HEX && 
+                        line.account === RLUSD_ISSUER
+                    );
+                }
+
+                if (!trustlineExists) {
+                    // Set up RLUSD trustline for user
+                    const trustSet = {
+                        TransactionType: "TrustSet",
+                        Account: user.wallet.classicAddress,
+                        LimitAmount: {
+                            currency: RLUSD_HEX,
+                            issuer: RLUSD_ISSUER,
+                            value: "100000"
+                        }
+                    };
+                    
+                    const preparedTrust = await client.autofill(trustSet);
+                    const signedTrust = user.wallet.sign(preparedTrust);
+                    await client.submitAndWait(signedTrust.tx_blob);
+                    output.textContent += "✅ User trustline set up for RLUSD\n";
+                }
+
+                // Set up trustline for co-borrower if needed
+                if (coBorrower) {
+                    const coBorrowerTrustlineResponse = await client.request({
+                        command: "account_lines",
+                        account: coBorrower.wallet.classicAddress,
+                        ledger_index: "validated",
+                        peer: RLUSD_ISSUER
+                    });
+
+                    let coBorrowerTrustlineExists = false;
+                    if (coBorrowerTrustlineResponse.result.lines) {
+                        coBorrowerTrustlineExists = coBorrowerTrustlineResponse.result.lines.some(line => 
+                            line.currency === RLUSD_HEX && 
+                            line.account === RLUSD_ISSUER
+                        );
+                    }
+
+                    if (!coBorrowerTrustlineExists) {
+                        const coBorrowerTrustSet = {
+                            TransactionType: "TrustSet",
+                            Account: coBorrower.wallet.classicAddress,
+                            LimitAmount: {
+                                currency: RLUSD_HEX,
+                                issuer: RLUSD_ISSUER,
+                                value: "100000"
+                            }
+                        };
+                        
+                        const preparedCoBorrowerTrust = await client.autofill(coBorrowerTrustSet);
+                        const signedCoBorrowerTrust = coBorrower.wallet.sign(preparedCoBorrowerTrust);
+                        await client.submitAndWait(signedCoBorrowerTrust.tx_blob);
+                        output.textContent += "✅ Co-borrower trustline set up for RLUSD\n";
+                    }
+                }
+                
+                // Create loan record
+                const newLoan = {
+                    id: loans.length + 1,
+                    userId: user.id,
+                    coBorrowerId: coBorrowerId,
+                    amount: amount,
+                    issuedAt: new Date(),
+                    dueAt: new Date(Date.now() + termMinutes * 60000),
+                    repaid: false,
+                    repaidAt: null,
+                    repaidAmount: 0,
+                    status: "active"
+                };
+                
+                loans.push(newLoan);
+                user.loans.push(newLoan.id);
+                if (coBorrower) {
+                    coBorrower.loans.push(newLoan.id);
+                }
+                user.totalBorrowed += amount;
+                if (coBorrower) {
+                    coBorrower.totalBorrowed += amount;
+                }
+                
+                // Create payment transaction
+                const issuerWallet = xrpl.Wallet.fromSeed(RLUSD_ISSUER_SECRET);
+                const payment = {
+                    TransactionType: "Payment",
+                    Account: issuerWallet.classicAddress,
+                    Destination: user.wallet.classicAddress,
+                    Amount: {
+                        currency: RLUSD_HEX,
+                        issuer: RLUSD_ISSUER,
+                        value: amount.toString()
+                    }
+                };
+                
+                const prepared = await client.autofill(payment);
+                
+                if (coBorrower) {
+                    // Multisign transaction
+                    output.textContent += "Setting up multisign transaction...\n";
+                    
+                    // First, set up multisign for the primary borrower
+                    const signerListSet = {
+                        TransactionType: 'SignerListSet',
+                        Account: user.wallet.classicAddress,
+                        SignerEntries: [
+                            {
+                                SignerEntry: {
+                                    Account: coBorrower.wallet.classicAddress,
+                                    SignerWeight: 1
+                                }
+                            }
+                        ],
+                        SignerQuorum: 1
+                    };
+                    
+                    const preparedSignerList = await client.autofill(signerListSet);
+                    const signedSignerList = user.wallet.sign(preparedSignerList);
+                    await client.submitAndWait(signedSignerList.tx_blob);
+                    
+                    output.textContent += "✅ Multisign setup completed\n";
+                    
+                    // Get current ledger info
+                    const ledgerInfo = await client.request({
+                        command: "ledger",
+                        ledger_index: "validated"
+                    });
+                    
+                    const currentLedger = ledgerInfo.result.ledger_index;
+                    
+                    // Prepare payment transaction
+                    const payment = {
+                        TransactionType: "Payment",
+                        Account: issuerWallet.classicAddress,
+                        Destination: user.wallet.classicAddress,
+                        Amount: {
+                            currency: RLUSD_HEX,
+                            issuer: RLUSD_ISSUER,
+                            value: amount.toString()
+                        },
+                        Fee: "10000",
+                        LastLedgerSequence: currentLedger + 20
+                    };
+                    
+                    const prepared = await client.autofill(payment);
+                    
+                    // Sign with both users
+                    output.textContent += "Signing with primary borrower...\n";
+                    const { tx_blob: tx_blob1 } = user.wallet.sign(prepared, true);
+                    
+                    output.textContent += "Signing with co-borrower...\n";
+                    const { tx_blob: tx_blob2 } = coBorrower.wallet.sign(prepared, true);
+                    
+                    // Combine signatures
+                    output.textContent += "Combining signatures...\n";
+                    const multisignedTx = xrpl.multisign([tx_blob1, tx_blob2]);
+                    
+                    // Submit multisigned transaction
+                    const result = await client.submitAndWait(multisignedTx);
+                    
+                    if (result.result.meta.TransactionResult === "tesSUCCESS") {
+                        output.textContent += `✅ Successfully issued loan of ${amount} RLUSD to User #${user.id} with co-borrower User #${coBorrower.id}\n` +
+                            `Due date: ${newLoan.dueAt.toLocaleString()}\n` +
+                            `Transaction hash: ${result.result.hash}`;
+                        
+                        updateUserList();
+                        updateUserSelects();
+                        updateRepaymentSelects();
+                    } else {
+                        throw new Error(`Transaction failed: ${result.result.meta.TransactionResult}`);
+                    }
+                } else {
+                    // Single signer transaction
+                    const signed = issuerWallet.sign(prepared);
+                    const result = await client.submitAndWait(signed.tx_blob);
+                    
+                    if (result.result.meta.TransactionResult === "tesSUCCESS") {
+                        output.textContent += `✅ Successfully issued loan of ${amount} RLUSD to User #${user.id}\n` +
+                            `Due date: ${newLoan.dueAt.toLocaleString()}\n` +
+                            `Transaction hash: ${result.result.hash}`;
+                        
+                        updateUserList();
+                        updateUserSelects();
+                        updateRepaymentSelects();
+                    } else {
+                        throw new Error(`Transaction failed: ${result.result.meta.TransactionResult}`);
+                    }
+                }
+                
+                loading.style.display = 'none';
+            } catch (error) {
+                loading.style.display = 'none';
+                output.textContent = `❌ Error issuing loan: ${error.message}`;
+                console.error(error);
+            }
+        });
+        
+        // Check for repayments
+        document.getElementById('checkRepayments').addEventListener('click', async function() {
+            if (!loans.length) {
+                output.textContent = "No active loans to check";
+                return;
+            }
+            
+            loading.style.display = 'block';
+            output.textContent = "Checking for repayments...\n";
+            
+            try {
+                let repaymentsFound = 0;
+                
+                // Check each active loan
+                for (const loan of loans.filter(l => !l.repaid)) {
+                    const user = users.find(u => u.id === loan.userId);
+                    if (!user) continue;
+                    
+                    // Get user's payment history
+                    const payments = await client.request({
+                        command: "account_tx",
+                        account: user.wallet.classicAddress,
+                        ledger_index_min: -1,
+                        ledger_index_max: -1,
+                        limit: 10
+                    });
+                    
+                    // Check for payments to bank
+                    for (const tx of payments.result.transactions) {
+                        if (tx.tx.TransactionType === "Payment" && 
+                            tx.tx.Destination === bankWallet.classicAddress &&
+                            new Date(tx.tx.date * 1000) > loan.issuedAt) {
+                            
+                            const paymentAmount = parseFloat(xrpl.dropsToXrp(tx.tx.Amount));
+                            
+                            // Update loan repayment
+                            loan.repaidAmount += paymentAmount;
+                            
+                            // Check if full amount is repaid
+                            if (loan.repaidAmount >= loan.amount) {
+                                loan.repaid = true;
+                                loan.repaidAt = new Date(tx.tx.date * 1000);
+                                loan.status = "repaid";
+                                user.lastRepaymentTime = loan.repaidAt;
+                                user.totalRepaid += loan.amount;
+                                repaymentsFound++;
+                                
+                                // Calculate repayment speed (0-1 where 1 is early, 0 is late)
+                                const totalTime = loan.dueAt - loan.issuedAt;
+                                const actualTime = loan.repaidAt - loan.issuedAt;
+                                const repaymentSpeed = Math.max(0, Math.min(1, 1 - (actualTime / totalTime)));
+                                
+                                // Update credit score (300-850 range)
+                                const scoreChange = Math.round(50 * repaymentSpeed);
+                                user.creditScore = Math.min(850, Math.max(300, user.creditScore + scoreChange));
+                                
+                                output.textContent += `\nUser #${user.id} repaid loan #${loan.id} `;
+                                if (repaymentSpeed > 0.8) {
+                                    output.textContent += `early! (+${scoreChange} credit score)`;
+                                } else if (repaymentSpeed > 0.5) {
+                                    output.textContent += `on time. (+${scoreChange} credit score)`;
+                                } else {
+                                    output.textContent += `late. (+${scoreChange} credit score)`;
+                                }
+                            } else {
+                                // Partial repayment
+                                output.textContent += `\nUser #${user.id} made partial repayment of ${paymentAmount} RLUSD on loan #${loan.id}`;
+                            }
+                        }
+                    }
+                    
+                    // Check for overdue loans
+                    if (!loan.repaid && new Date() > loan.dueAt) {
+                        loan.status = "overdue";
+                        // Penalize credit score for overdue loans
+                        user.creditScore = Math.max(300, user.creditScore - 20);
+                        output.textContent += `\nLoan #${loan.id} is overdue! User #${user.id} credit score decreased.`;
+                    }
+                }
+                
+                if (repaymentsFound === 0) {
+                    output.textContent += "\nNo full repayments found for active loans";
+                }
+                
+                updateUserList();
+                updateRepaymentSelects();
+                loading.style.display = 'none';
+            } catch (error) {
+                loading.style.display = 'none';
+                output.textContent += `\n❌ Error checking repayments: ${error.message}`;
+                console.error(error);
+            }
+        });
+        
+        // Submit manual repayment
+        document.getElementById('submitRepayment').addEventListener('click', async function() {
+            const userId = parseInt(document.getElementById('repaymentUser').value);
+            const loanId = parseInt(document.getElementById('repaymentLoan').value);
+            const amount = parseFloat(document.getElementById('repaymentAmount').value);
+            
+            if (!userId || !loanId || !amount || amount <= 0) {
+                output.textContent = "❌ Please select a user, loan, and enter valid amount";
+                return;
+            }
+            
+            loading.style.display = 'block';
+            output.textContent = `Processing repayment of ${amount} RLUSD...`;
+            
+            try {
+                const user = users.find(u => u.id === userId);
+                const loan = loans.find(l => l.id === loanId);
+                
+                if (!user || !loan) {
+                    throw new Error("User or loan not found");
+                }
+                
+                if (loan.repaid) {
+                    throw new Error("This loan is already fully repaid");
+                }
+
+                // Verify user's current RLUSD balance
+                const userBalanceResponse = await client.request({
+                    command: "account_lines",
+                    account: user.wallet.classicAddress,
+                    ledger_index: "validated",
+                    peer: RLUSD_ISSUER
+                });
+
+                let userBalance = 0;
+                if (userBalanceResponse.result.lines) {
+                    const rlusdLine = userBalanceResponse.result.lines.find(line => 
+                        line.currency === RLUSD_HEX && 
+                        line.account === RLUSD_ISSUER
+                    );
+                    if (rlusdLine) {
+                        userBalance = parseFloat(rlusdLine.balance);
+                    }
+                }
+
+                if (userBalance < amount) {
+                    throw new Error(`User only has ${userBalance} RLUSD, but needs ${amount} RLUSD for repayment`);
+                }
+
+                // Step 1: User sends RLUSD back to issuer
+                const userToIssuerPayment = {
+                    TransactionType: "Payment",
+                    Account: user.wallet.classicAddress,
+                    Destination: RLUSD_ISSUER,
+                    Amount: {
+                        currency: RLUSD_HEX,
+                        issuer: RLUSD_ISSUER,
+                        value: amount.toString()
+                    }
+                };
+                
+                const preparedUserToIssuer = await client.autofill(userToIssuerPayment);
+                const signedUserToIssuer = user.wallet.sign(preparedUserToIssuer);
+                const resultUserToIssuer = await client.submitAndWait(signedUserToIssuer.tx_blob);
+                
+                if (resultUserToIssuer.result.meta.TransactionResult !== "tesSUCCESS") {
+                    throw new Error(`Failed to send RLUSD to issuer: ${resultUserToIssuer.result.meta.TransactionResult}`);
+                }
+
+                // Step 2: Issuer sends RLUSD to bank
+                const issuerWallet = xrpl.Wallet.fromSeed(RLUSD_ISSUER_SECRET);
+                const issuerToBankPayment = {
+                    TransactionType: "Payment",
+                    Account: issuerWallet.classicAddress,
+                    Destination: bankWallet.classicAddress,
+                    Amount: {
+                        currency: RLUSD_HEX,
+                        issuer: RLUSD_ISSUER,
+                        value: amount.toString()
+                    }
+                };
+                
+                const preparedIssuerToBank = await client.autofill(issuerToBankPayment);
+                const signedIssuerToBank = issuerWallet.sign(preparedIssuerToBank);
+                const resultIssuerToBank = await client.submitAndWait(signedIssuerToBank.tx_blob);
+                
+                if (resultIssuerToBank.result.meta.TransactionResult === "tesSUCCESS") {
+                    // Update loan repayment
+                    loan.repaidAmount += amount;
+                    user.totalRepaid += amount;
+                    
+                    // Check if full amount is repaid
+                    if (loan.repaidAmount >= loan.amount) {
+                        loan.repaid = true;
+                        loan.repaidAt = new Date();
+                        loan.status = "repaid";
+                        user.lastRepaymentTime = loan.repaidAt;
+                        
+                        // Calculate repayment speed (0-1 where 1 is early, 0 is late)
+                        const totalTime = loan.dueAt - loan.issuedAt;
+                        const actualTime = loan.repaidAt - loan.issuedAt;
+                        const repaymentSpeed = Math.max(0, Math.min(1, 1 - (actualTime / totalTime)));
+                        
+                        // Update credit score (300-850 range)
+                        const scoreChange = Math.round(50 * repaymentSpeed);
+                        user.creditScore = Math.min(850, Math.max(300, user.creditScore + scoreChange));
+                        
+                        output.textContent = `✅ User #${user.id} fully repaid loan #${loan.id}\n` +
+                            `Transaction hash: ${resultIssuerToBank.result.hash}\n` +
+                            `Credit score change: +${scoreChange}`;
+                    } else {
+                        output.textContent = `✅ User #${user.id} made partial repayment of ${amount} RLUSD on loan #${loan.id}\n` +
+                            `Transaction hash: ${resultIssuerToBank.result.hash}\n` +
+                            `Amount remaining: ${(loan.amount - loan.repaidAmount).toFixed(6)} RLUSD`;
+                    }
+                    
+                    updateUserList();
+                    updateRepaymentSelects();
+                } else {
+                    throw new Error(`Failed to send RLUSD to bank: ${resultIssuerToBank.result.meta.TransactionResult}`);
+                }
+                
+                loading.style.display = 'none';
+            } catch (error) {
+                loading.style.display = 'none';
+                output.textContent = `❌ Error processing repayment: ${error.message}`;
+                console.error(error);
+            }
+        });
+        
+        // Helper functions
+        async function getBalance(address) {
+            const response = await client.request({
+                command: "account_lines",
+                account: address,
+                ledger_index: "validated",
+                peer: RLUSD_ISSUER
+            });
+            
+            if (response.result.lines && response.result.lines.length > 0) {
+                return `${response.result.lines[0].balance} RLUSD`;
+            }
+            return "0 RLUSD";
+        }
+        
+        function updateUserList() {
+            const userList = document.getElementById('userList');
+            userList.innerHTML = '';
+            
+            if (users.length === 0) {
+                userList.innerHTML = '<p>No users created yet</p>';
+                return;
+            }
+            
+            users.forEach(user => {
+                const userCard = document.createElement('div');
+                userCard.className = 'user-card';
+                
+                // Get user's loans
+                const userLoans = loans.filter(l => l.userId === user.id);
+                const activeLoans = userLoans.filter(l => !l.repaid);
+                const overdueLoans = userLoans.filter(l => l.status === "overdue");
+                
+                userCard.innerHTML = `
+                    <h3>User #${user.id}</h3>
+                    <p><strong>Address:</strong> ${user.wallet.classicAddress}</p>
+                    <p><strong>Credit Score:</strong> <span class="credit-score">${user.creditScore}</span></p>
+                    <p><strong>Total Borrowed:</strong> ${user.totalBorrowed.toFixed(6)} RLUSD</p>
+                    <p><strong>Total Repaid:</strong> ${user.totalRepaid.toFixed(6)} RLUSD</p>
+                    <p><strong>Loans:</strong> ${userLoans.length} (${activeLoans.length} active, ${overdueLoans.length} overdue)</p>
+                    ${user.lastRepaymentTime ? `<p><strong>Last Repayment:</strong> ${user.lastRepaymentTime.toLocaleString()}</p>` : ''}
+                    
+                    <h4 style="margin-top: 10px;">Loan History</h4>
+                    ${userLoans.length === 0 ? '<p>No loans</p>' : ''}
+                `;
+                
+                userLoans.forEach(loan => {
+                    const loanCard = document.createElement('div');
+                    loanCard.className = `loan-card ${loan.status === "repaid" ? "loan-repaid" : ""} ${loan.status === "overdue" ? "loan-overdue" : ""}`;
+                    
+                    const remaining = loan.amount - loan.repaidAmount;
+                    const progress = (loan.repaidAmount / loan.amount) * 100;
+                    
+                    loanCard.innerHTML = `
+                        <p><strong>Loan #${loan.id}</strong> (${loan.status})</p>
+                        <p>Amount: ${loan.amount.toFixed(6)} RLUSD (${loan.repaidAmount.toFixed(6)} repaid)</p>
+                        ${!loan.repaid ? `<p>Remaining: ${remaining.toFixed(6)} RLUSD</p>` : ''}
+                        <p>Issued: ${loan.issuedAt.toLocaleString()}</p>
+                        <p>Due: ${loan.dueAt.toLocaleString()}</p>
+                        ${loan.repaid ? `<p>Repaid: ${loan.repaidAt.toLocaleString()}</p>` : ''}
+                        ${!loan.repaid ? `
+                            <div style="background-color: #e9ecef; border-radius: 4px; height: 20px; margin-top: 5px;">
+                                <div style="background-color: ${loan.status === "overdue" ? "#dc3545" : "#28a745"}; width: ${progress}%; height: 100%; border-radius: 4px;"></div>
+                            </div>
+                            <small>${progress.toFixed(1)}% repaid</small>
+                        ` : ''}
+                    `;
+                    
+                    userCard.appendChild(loanCard);
+                });
+                
+                userList.appendChild(userCard);
+            });
+        }
+        
+        function updateUserSelects() {
+            const userSelect = document.getElementById('selectedUser');
+            const repaymentUser = document.getElementById('repaymentUser');
+            const coBorrowerSelect = document.getElementById('coBorrower');
+            
+            userSelect.innerHTML = '';
+            repaymentUser.innerHTML = '<option value="">Select User</option>';
+            coBorrowerSelect.innerHTML = '<option value="">None</option>';
+            
+            users.forEach(user => {
+                const option1 = document.createElement('option');
+                option1.value = user.id;
+                option1.textContent = `User #${user.id} (Score: ${user.creditScore})`;
+                userSelect.appendChild(option1);
+                
+                const option2 = document.createElement('option');
+                option2.value = user.id;
+                option2.textContent = `User #${user.id} (${user.wallet.classicAddress})`;
+                repaymentUser.appendChild(option2);
+                
+                const option3 = document.createElement('option');
+                option3.value = user.id;
+                option3.textContent = `User #${user.id} (Score: ${user.creditScore})`;
+                coBorrowerSelect.appendChild(option3);
+            });
+        }
+        
+        function updateRepaymentSelects() {
+            const repaymentLoan = document.getElementById('repaymentLoan');
+            const repaymentAmount = document.getElementById('repaymentAmount');
+            const userId = document.getElementById('repaymentUser').value;
+            
+            repaymentLoan.innerHTML = '<option value="">Select Loan</option>';
+            repaymentAmount.value = '';
+            
+            if (!userId) return;
+            
+            const userLoans = loans
+                .filter(l => l.userId === parseInt(userId))
+                .filter(l => !l.repaid)
+                .sort((a, b) => b.id - a.id);
+            
+            userLoans.forEach(loan => {
+                const remaining = loan.amount - loan.repaidAmount;
+                const option = document.createElement('option');
+                option.value = loan.id;
+                option.textContent = `Loan #${loan.id} (${remaining.toFixed(6)} RLUSD remaining, due ${loan.dueAt.toLocaleString()})`;
+                option.dataset.remaining = remaining;
+                repaymentLoan.appendChild(option);
+            });
+            
+            // Update amount field when loan is selected
+            repaymentLoan.addEventListener('change', function() {
+                const selectedLoan = this.options[this.selectedIndex];
+                if (selectedLoan.value) {
+                    repaymentAmount.value = selectedLoan.dataset.remaining;
+                }
+            });
+        }
+        
+        // Initialize repayment user select change handler
+        document.getElementById('repaymentUser').addEventListener('change', updateRepaymentSelects);
+    </script>
+</body>
+</html>
